@@ -22,9 +22,3 @@ jobs:
       run: |
         python3 ./zodgame/zodgame.py "${{secrets.ZODGAME_COOKIE}}"
     - uses: gautamkrishnar/keepalive-workflow@master
-
-      - name: Run ZodGame Script
-        env:
-          DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}  # 注入环境变量
-        run: |
-          python zodgame.py "${{ secrets.COOKIE_STRING }}"
