@@ -22,12 +22,6 @@ jobs:
       run: |
         python3 ./zodgame/zodgame.py "${{secrets.ZODGAME_COOKIE}}"
     - uses: gautamkrishnar/keepalive-workflow@master
-jobs:
-  run_zodgame:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
       - name: Run ZodGame Script
         env:
