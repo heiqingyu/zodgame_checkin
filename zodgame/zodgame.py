@@ -195,8 +195,8 @@ def zodgame(cookie_string, webhook_url=None):  # 新增webhook参数
     driver.quit()
     
 if __name__ == "__main__":
+    import os
     cookie_string = sys.argv[1]
-    webhook_url = sys.argv[2] if len(sys.argv) > 2 else None  # 新增第二个参数
+    webhook_url = os.getenv("DINGTALK_WEBHOOK_URL")  # 从环境变量读取
     assert cookie_string
-    
     zodgame(cookie_string, webhook_url)
