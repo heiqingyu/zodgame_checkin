@@ -2,23 +2,29 @@ name: zodgame
 
 on:
   schedule:
-  - cron: "0 0 * * *"
-  
+    - cron: "0 0 * * *"
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-    
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Install requirements
-      run: |
-        pip3 install -r ./zodgame/requirements.txt
-    - name: Run 
-      run: |
-        python3 ./zodgame/zodgame.py "${{secrets.ZODGAME_COOKIE}}"
-    - uses: gautamkrishnar/keepalive-workflow@master
+      - name: Checkout code
+        uses: actions/checkout@v4  # 升级到最新版本
+
+      - name: Install requirements
+        run: |
+          pip3 install -r ./zodgame/requirements.txt
+
+      - name: Run Script
+        env:
+          DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}  # 注入Webhook URL
+        run: |
+          python3 ./zodgame/zodgame.py "${{ secrets.ZODGAME_COOKIE }}"
+
+      - name: Keep workflow alive
+        uses: gautamkrishnar/keepalive-workflow@master
