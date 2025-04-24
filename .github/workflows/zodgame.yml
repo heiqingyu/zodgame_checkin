@@ -36,6 +36,7 @@ jobs:
         if: always()
         env:
           DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}
+        shell: bash
         run: |
           STATUS="${{ job.status }}"
           if [ "$STATUS" = "success" ]; then
