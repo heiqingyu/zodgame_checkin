@@ -2,11 +2,27 @@
 import io
 import re
 import sys
+import requests  # 新增requests库
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding='utf-8')
 
 import undetected_chromedriver as uc
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
+
+# 新增钉钉通知函数
+def send_dingtalk_notification(webhook_url, message):
+    headers = {"Content-Type": "application/json"}
+    data = {
+        "msgtype": "text",
+        "text": {
+            "content": f"ZodGame自动任务通知\n{message}"
+        }
+    }
+    try:
+        resp = requests.post(webhook_url, json=data, headers=headers, timeout=10)
+        print("【通知】钉钉消息发送状态:", resp.status_code)
+    except Exception as e:
+        print("【通知】钉钉消息发送失败:", str(e))
 
 def zodgame_checkin(driver, formhash):
     checkin_url = "https://zodgame.xyz/plugin.php?id=dsu_paulsign:sign&operation=qiandao&infloat=1&inajax=0"    
@@ -28,11 +44,10 @@ def zodgame_checkin(driver, formhash):
     match = re.search('<div class="c">\r\n(.*?)</div>\r\n', resp["response"], re.S)
     message = match[1] if match is not None else "签到失败"
     print(f"【签到】{message}")
-    return "恭喜你签到成功!" in message or "您今日已经签到，请明天再来" in message
-
+    success = "恭喜你签到成功!" in message or "您今日已经签到，请明天再来" in message
+    return success, message  # 返回更详细的信息
 
 def zodgame_task(driver, formhash):
-
     def clear_handles(driver, main_handle):
         handles = driver.window_handles[:]
         for handle in handles:
@@ -49,8 +64,9 @@ def zodgame_task(driver, formhash):
             )
             reward = driver.find_element(By.XPATH, '//li[contains(text(), "点币: ")]').get_attribute("textContent")[:-2]
             print(f"【Log】{reward}")
+            return reward
         except:
-            pass
+            return "未获取到奖励信息"
 
     driver.get("https://zodgame.xyz/plugin.php?id=jnbux")
     WebDriverWait(driver, 240).until(
@@ -70,10 +86,14 @@ def zodgame_task(driver, formhash):
 
     join_task_a = driver.find_elements(By.XPATH, '//a[text()="参与任务"]')
     success = True
+    task_results = []
 
     if len(join_task_a) == 0:
-        print("【任务】所有任务均已完成。")
-        return success
+        msg = "所有任务均已完成"
+        print(f"【任务】{msg}")
+        task_results.append(msg)
+        return success, task_results
+
     handle = driver.current_window_handle
     for idx, a in enumerate(join_task_a):
         on_click = a.get_attribute("onclick")
@@ -102,18 +122,21 @@ def zodgame_task(driver, formhash):
                 print(f"【Log】任务 {idx+1} 确认页检查失败。")
                 pass
 
+            task_results.append(f"任务 {idx+1} 成功")
             print(f"【任务】任务 {idx+1} 成功。")
         except Exception as e:
             success = False
+            task_results.append(f"任务 {idx+1} 失败 - {str(type(e))}")
             print(f"【任务】任务 {idx+1} 失败。", type(e))
         finally:
             clear_handles(driver, handle)
     
-    show_task_reward(driver)
+    reward = show_task_reward(driver)
+    task_results.append(f"当前点币: {reward}")
 
-    return success
+    return success, "\n".join(task_results)  # 返回任务详情
 
-def zodgame(cookie_string):
+def zodgame(cookie_string, webhook_url=None):  # 新增webhook参数
     options = uc.ChromeOptions()
     options.add_argument("--disable-popup-blocking")
     driver = uc.Chrome(driver_executable_path = """C:\SeleniumWebDrivers\ChromeDriver\chromedriver.exe""",
@@ -149,13 +172,31 @@ def zodgame(cookie_string):
     assert len(driver.find_elements(By.XPATH, '//a[text()="用户名"]')) == 0, "Login fails. Please check your cookie."
         
     formhash = driver.find_element(By.XPATH, '//input[@name="formhash"]').get_attribute('value')
-    assert zodgame_checkin(driver, formhash) and zodgame_task(driver, formhash), "Checkin failed or task failed."
+    
+    # 获取任务结果
+    checkin_success, checkin_msg = zodgame_checkin(driver, formhash)
+    task_success, task_msg = zodgame_task(driver, formhash)
+    
+    # 构建通知消息
+    final_msg = []
+    final_msg.append(f"签到结果: {checkin_msg}")
+    final_msg.append(f"任务详情:\n{task_msg}")
+    final_msg = "\n".join(final_msg)
+    
+    # 发送钉钉通知
+    if webhook_url:
+        send_dingtalk_notification(webhook_url, final_msg)
+    else:
+        print("【通知】未提供钉钉Webhook URL，跳过通知")
+
+    assert checkin_success and task_success, "Checkin failed or task failed."
 
     driver.close()
     driver.quit()
     
 if __name__ == "__main__":
     cookie_string = sys.argv[1]
+    webhook_url = sys.argv[2] if len(sys.argv) > 2 else None  # 新增第二个参数
     assert cookie_string
     
-    zodgame(cookie_string)
+    zodgame(cookie_string, webhook_url)
