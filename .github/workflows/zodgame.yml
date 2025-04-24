@@ -16,7 +16,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # 升级到最新版本
+        uses: actions/checkout@v4
 
       - name: Install requirements
         run: |
@@ -24,12 +24,29 @@ jobs:
 
       - name: Run Script
         env:
-          DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}  # 注入Webhook URL
+          DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}
         run: |
           python3 ./zodgame/zodgame.py "${{ secrets.ZODGAME_COOKIE }}"
 
       - name: Keep workflow alive
         run: |
-          sleep 300  # 让工作流保持活跃 300 秒（5 分钟），可按需调整时间
-          
-    - uses: liskin/gh-workflow-keepalive@main
+          sleep 300
+
+      - name: DingTalk Notification
+        if: always()
+        env:
+          DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}
+        run: |
+          STATUS="${{ job.status }}"
+          if [ "$STATUS" = "success" ]; then
+            MESSAGE="🎉 GitHub Actions 工作流执行成功！工作流名称: zodgame"
+          else
+            MESSAGE="❌ GitHub Actions 工作流执行失败！工作流名称: zodgame"
+          fi
+          curl -X POST -H 'Content-Type: application/json' \
+          -d "{
+            \"msgtype\": \"text\",
+            \"text\": {
+              \"content\": \"$MESSAGE\"
+            }
+          }" $DINGTALK_WEBHOOK_URL
