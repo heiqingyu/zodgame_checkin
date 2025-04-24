@@ -4,11 +4,9 @@ on:
   schedule:
     - cron: "0 0 * * *"
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -29,25 +27,9 @@ jobs:
           python3 ./zodgame/zodgame.py "${{ secrets.ZODGAME_COOKIE }}"
 
       - name: Keep workflow alive
-        run: |
-          sleep 300
-
-      - name: DingTalk Notification
-        if: always()
-        env:
-          DINGTALK_WEBHOOK_URL: ${{ secrets.DINGTALK_WEBHOOK_URL }}
-        shell: bash
-        run: |
-          STATUS="${{ job.status }}"
-          if [ "$STATUS" = "success" ]; then
-            MESSAGE="🎉 GitHub Actions 工作流执行成功！工作流名称: zodgame"
-          else
-            MESSAGE="❌ GitHub Actions 工作流执行失败！工作流名称: zodgame"
-          fi
-          curl -X POST -H 'Content-Type: application/json' \
-          -d "{
-            \"msgtype\": \"text\",
-            \"text\": {
-              \"content\": \"$MESSAGE\"
-            }
-          }" $DINGTALK_WEBHOOK_URL
+        uses: liskin/gh-workflow-keepalive@main
+        with:
+          # 必须添加以下参数（根据仓库文档要求）
+          repo-token: ${{ secrets.GITHUB_TOKEN }}  # 注入 GITHUB_TOKEN 权限
+          timeout-minutes: 360  # 设置最大保活时间（单位：分钟）
+          interval-seconds: 30  # 心跳间隔时间（单位：秒）
