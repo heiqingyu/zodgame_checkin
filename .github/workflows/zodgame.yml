@@ -4,9 +4,11 @@ on:
   schedule:
     - cron: "0 0 * * *"
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -27,5 +29,7 @@ jobs:
           python3 ./zodgame/zodgame.py "${{ secrets.ZODGAME_COOKIE }}"
 
       - name: Keep workflow alive
-      
+        run: |
+          sleep 300  # 让工作流保持活跃 300 秒（5 分钟），可按需调整时间
+          
     - uses: liskin/gh-workflow-keepalive@main
