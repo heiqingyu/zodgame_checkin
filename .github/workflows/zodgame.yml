@@ -28,4 +28,5 @@ jobs:
           python3 ./zodgame/zodgame.py "${{ secrets.ZODGAME_COOKIE }}"
 
       - name: Keep workflow alive
+      
     - uses: liskin/gh-workflow-keepalive@main
