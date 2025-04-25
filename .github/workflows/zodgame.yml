@@ -1,27 +1,24 @@
-name: Zodgame Check - in and Bux Task
+name: zodgame
+
 on:
   schedule:
-    - cron: '0 0 8 * * *' # 每天8点执行
+  - cron: "0 0 * * *"
+  
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    
+  workflow_dispatch:
 jobs:
-  check - in - job:
-    runs - on: ubuntu - latest
+  build:
+    runs-on: windows-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup - python@v2
-        with:
-          python - version: 3.8
-      - name: Run zodgame check - in and task
-        run: python zodgame/zodgame.py # 根据实际脚本路径修改
-      - name: Send DingTalk notification
-        if: always() # 无论任务成功或失败都发送通知
-        uses: appleboy/dingtalk - action@master
-        with:
-          to: ${{ secrets.DINGTALK_WEBHOOK_URL }} # 钉钉Webhook地址，需设置为仓库secret
-          message: |
-            **Zodgame签到和任务执行结果**
-            ${{ job.status }}
-            ${{ steps.run - zodgame - check - in - and - task.outputs.result }} # 假设脚本执行结果有输出
-          type: markdown
-          token: ${{ secrets.DINGTALK_ACCESS_TOKEN }} # 若有token认证，需设置为仓库secret
+    - uses: actions/checkout@v3
+    - name: Install requirements
+      run: |
+        pip3 install -r ./zodgame/requirements.txt
+    - name: Run 
+      run: |
+        python3 ./zodgame/zodgame.py "${{secrets.ZODGAME_COOKIE}}"
+    - uses: liskin/gh-workflow-keepalive@main
