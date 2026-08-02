@@ -5,7 +5,7 @@ on:
     - cron: "0 0 1 * *"   # 每月1号 UTC 0点
 
 permissions:
-  contents: write         # 允许推送提交
+  contents: write
 
 jobs:
   keepalive:
@@ -14,25 +14,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # 拉取完整历史以计算时间
+          fetch-depth: 0
 
       - name: Check last commit age and push empty commit if needed
         uses: actions/github-script@v7
         with:
           script: |
-            const exec = require('child_process').execSync;
-            const lastCommitTime = parseInt(exec('git log -1 --format=%ct').toString().trim());
+            // 改用 execSync，避免与可能存在的 exec 冲突
+            const { execSync } = require('child_process');
+            
+            const lastCommitTime = parseInt(execSync('git log -1 --format=%ct').toString().trim());
             const now = Math.floor(Date.now() / 1000);
             const daysSinceLastCommit = (now - lastCommitTime) / 86400;
             console.log(`上次提交距今 ${daysSinceLastCommit.toFixed(1)} 天`);
 
             if (daysSinceLastCommit > 45) {
               console.log('即将创建空提交以保持仓库活跃...');
-              exec('git config user.name "github-actions[bot]"');
-              exec('git config user.email "github-actions[bot]@users.noreply.github.com"');
-              exec('git commit --allow-empty -m "chore: keepalive empty commit"');
-              // 加 --force 提高对分支保护的兼容性（空提交无风险）
-              exec('git push origin HEAD --force');
+              execSync('git config user.name "github-actions[bot]"');
+              execSync('git config user.email "github-actions[bot]@users.noreply.github.com"');
+              execSync('git commit --allow-empty -m "chore: keepalive empty commit"');
+              // 使用 --force 绕过多数分支保护（空提交不会破坏代码）
+              execSync('git push origin HEAD --force');
               console.log('空提交已推送。');
             } else {
               console.log('仓库仍然活跃，无需操作。');
