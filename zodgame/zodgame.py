@@ -2,11 +2,56 @@
 import io
 import re
 import sys
+import os
+import json
+import time
+import hmac
+import hashlib
+import base64
+import urllib.parse
+import urllib.request
+from datetime import datetime
+
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding='utf-8')
 
 import undetected_chromedriver as uc
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
+
+
+def send_dingtalk_notification(webhook, secret, message):
+    """发送钉钉机器人通知（支持加签）"""
+    timestamp = str(round(time.time() * 1000))
+
+    if secret:
+        string_to_sign = f"{timestamp}\n{secret}"
+        hmac_code = hmac.new(
+            secret.encode("utf-8"),
+            string_to_sign.encode("utf-8"),
+            digestmod=hashlib.sha256,
+        ).digest()
+        sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+        url = f"{webhook}&timestamp={timestamp}&sign={sign}"
+    else:
+        url = webhook
+
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "msgtype": "markdown",
+        "markdown": {
+            "title": "ZodGame 签到通知",
+            "text": message,
+        },
+    }
+    data = json.dumps(payload).encode("utf-8")
+
+    req = urllib.request.Request(url, data=data, headers=headers)
+    resp = urllib.request.urlopen(req)
+    result = json.loads(resp.read().decode("utf-8"))
+    if result.get("errcode") == 0:
+        print("【通知】钉钉通知发送成功。")
+    else:
+        print(f"【通知】钉钉通知发送失败: {result}")
 
 def zodgame_checkin(driver, formhash):
     checkin_url = "https://zodgame.xyz/plugin.php?id=dsu_paulsign:sign&operation=qiandao&infloat=1&inajax=0"    
@@ -157,5 +202,20 @@ def zodgame(cookie_string):
 if __name__ == "__main__":
     cookie_string = sys.argv[1]
     assert cookie_string
-    
+
     zodgame(cookie_string)
+
+    dingtalk_webhook = os.environ.get("DINGTALK_WEBHOOK")
+    dingtalk_secret = os.environ.get("DINGTALK_SECRET")
+    if dingtalk_webhook:
+        message = (
+            f"### ZodGame 签到任务执行成功\n\n"
+            f"- 时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"- 状态: 成功"
+        )
+        try:
+            send_dingtalk_notification(dingtalk_webhook, dingtalk_secret, message)
+        except Exception as e:
+            print(f"【通知】钉钉通知发送异常: {e}")
+    else:
+        print("【通知】未配置 DINGTALK_WEBHOOK，跳过通知。")
