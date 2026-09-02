@@ -1,35 +1,13 @@
 name: Keepalive
-
 on:
   schedule:
     - cron: "0 0 1 * *"
-  workflow_dispatch:  # 手动触发方便测试
-
+  workflow_dispatch:
 permissions:
-  contents: write
-
+  actions: write   # 注意：API 方式需要 actions:write
 jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Push empty commit if needed
-        run: |
-          LAST_COMMIT_TIME=$(git log -1 --format=%ct)
-          NOW=$(date +%s)
-          DAYS=$(( (NOW - LAST_COMMIT_TIME) / 86400 ))
-          echo "上次提交距今 $DAYS 天"
-
-          if [ "$DAYS" -gt 45 ]; then
-            git config --local user.name "github-actions[bot]"
-            git config --local user.email "github-actions[bot]@users.noreply.github.com"
-            git commit --allow-empty -m "chore: keepalive empty commit"
-            git push  # 不加 --force，避免被分支保护拦截
-            echo "空提交已推送"
-          else
-            echo "仓库仍活跃，无需操作"
-          fi
+      - uses: actions/checkout@v4
+      - uses: gautamkrishnar/keepalive-workflow@v2
