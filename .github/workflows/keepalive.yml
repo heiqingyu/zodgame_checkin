@@ -1,10 +1,13 @@
 name: Keepalive
+
 on:
   schedule:
-    - cron: "0 0 1 * *"
-  workflow_dispatch:
+    - cron: "0 0 1 * *"        # 每月1号 UTC 0点
+  workflow_dispatch:            # 保留手动触发，方便测试
+
 permissions:
-  actions: write   # 注意：API 方式需要 actions:write
+  actions: write                # API 方式需要这个，不是 contents: write
+
 jobs:
   keepalive:
     runs-on: ubuntu-latest
