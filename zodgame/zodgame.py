@@ -187,11 +187,22 @@ def zodgame(cookie_string):
             })
     
     driver.get("https://zodgame.xyz/")
-    
-    WebDriverWait(driver, 240).until(
-        lambda x: x.title != "Just a moment..."
-    )
-    assert len(driver.find_elements(By.XPATH, '//a[text()="用户名"]')) == 0, "Login fails. Please check your cookie."
+
+    max_retries = 3
+    for attempt in range(max_retries):
+        WebDriverWait(driver, 240).until(
+            lambda x: x.title != "Just a moment..."
+        )
+        if len(driver.find_elements(By.XPATH, '//a[text()="用户名"]')) == 0:
+            break
+        if attempt < max_retries - 1:
+            print(f"【登录】登录检查失败，可能被 CloudFlare 拦截，重试中 ({attempt + 1}/{max_retries})...")
+            time.sleep(15)
+            driver.get("https://zodgame.xyz/")
+    else:
+        driver.close()
+        driver.quit()
+        raise AssertionError("Login fails. Please check your cookie.")
         
     formhash = driver.find_element(By.XPATH, '//input[@name="formhash"]').get_attribute('value')
     assert zodgame_checkin(driver, formhash) and zodgame_task(driver, formhash), "Checkin failed or task failed."
@@ -203,10 +214,25 @@ if __name__ == "__main__":
     cookie_string = sys.argv[1]
     assert cookie_string
 
-    zodgame(cookie_string)
-
     dingtalk_webhook = os.environ.get("DINGTALK_WEBHOOK")
     dingtalk_secret = os.environ.get("DINGTALK_SECRET")
+
+    try:
+        zodgame(cookie_string)
+    except Exception as e:
+        if dingtalk_webhook:
+            message = (
+                f"### ZodGame 签到任务执行失败\n\n"
+                f"- 时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                f"- 状态: 失败\n"
+                f"- 错误: {e}"
+            )
+            try:
+                send_dingtalk_notification(dingtalk_webhook, dingtalk_secret, message)
+            except Exception as notify_err:
+                print(f"【通知】钉钉通知发送异常: {notify_err}")
+        raise
+
     if dingtalk_webhook:
         message = (
             f"### ZodGame 签到任务执行成功\n\n"
