@@ -165,39 +165,43 @@ def zodgame(cookie_string):
                        browser_executable_path = """C:\Program Files\Google\Chrome\Application\chrome.exe""",
                        options = options)
 
-    # Load cookie
-    driver.get("https://zodgame.xyz/")
-
     if cookie_string.startswith("cookie:"):
         cookie_string = cookie_string[len("cookie:"):]
     cookie_string = cookie_string.replace("/","%2")
-    cookie_dict = [ 
-        {"name" : x.split('=')[0].strip(), "value": x.split('=')[1].strip()} 
+    cookie_dict = [
+        {"name" : x.split('=')[0].strip(), "value": x.split('=')[1].strip()}
         for x in cookie_string.split(';')
     ]
 
-    driver.delete_all_cookies()
-    for cookie in cookie_dict:
-        if cookie["name"] in ["qhMq_2132_saltkey", "qhMq_2132_auth"]:
-            driver.add_cookie({
-                "domain": "zodgame.xyz",
-                "name": cookie["name"],
-                "value": cookie["value"],
-                "path": "/",
-            })
-    
+    def inject_cookies():
+        driver.delete_all_cookies()
+        for cookie in cookie_dict:
+            if cookie["name"] in ["qhMq_2132_saltkey", "qhMq_2132_auth"]:
+                driver.add_cookie({
+                    "domain": "zodgame.xyz",
+                    "name": cookie["name"],
+                    "value": cookie["value"],
+                    "path": "/",
+                })
+
+    driver.get("https://zodgame.xyz/")
+    inject_cookies()
     driver.get("https://zodgame.xyz/")
 
-    max_retries = 3
+    max_retries = 5
     for attempt in range(max_retries):
         WebDriverWait(driver, 240).until(
             lambda x: x.title != "Just a moment..."
         )
         if len(driver.find_elements(By.XPATH, '//a[text()="用户名"]')) == 0:
             break
+        page_title = driver.title
+        print(f"【登录】登录检查失败，可能被 CloudFlare 拦截，重试中 ({attempt + 1}/{max_retries})...")
+        print(f"【登录】当前页面标题: {page_title}")
         if attempt < max_retries - 1:
-            print(f"【登录】登录检查失败，可能被 CloudFlare 拦截，重试中 ({attempt + 1}/{max_retries})...")
-            time.sleep(15)
+            time.sleep(30)
+            driver.get("https://zodgame.xyz/")
+            inject_cookies()
             driver.get("https://zodgame.xyz/")
     else:
         driver.close()
